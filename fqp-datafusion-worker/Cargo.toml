@@ -1,0 +1,17 @@
+[package]
+name = "fqp-datafusion-worker"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+axum = "0.8"
+datafusion = "53.1.0"
+datafusion-substrait = "53.1.0"
+prost = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
+toml = "0.9"

@@ -71,6 +71,7 @@ include(
     "core",
     "druid",
     "elasticsearch",
+    "fqp",
     "example:csv",
     "example:function",
     "file",

@@ -282,6 +282,9 @@ dependencies {
         sqllineClasspath(project(p))
     }
 
+    sqllineClasspath("org.duckdb:duckdb_jdbc:1.5.4.0")
+
+
     components {
         for (m in dataSetsForSqlline) {
             withModule<AddDependenciesRule>(m)
