@@ -14,19 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.fqp;
+package org.apache.calcite.adapter.fqp.rel;
 
-import org.apache.calcite.linq4j.Enumerable;
+import org.apache.calcite.rel.RelNode;
 
-import java.util.Collections;
-import java.util.Set;
-
-/** Executes a selected FQP fragment and returns its rows to Calcite. */
-public interface FqpFragmentExecutor {
-  /** Formats this executor can execute without a coordinator-side conversion. */
-  default Set<FqpFragmentPayload.Format> supportedPayloadFormats() {
-    return Collections.singleton(FqpFragmentPayload.Format.SUBSTRAIT_BINARY);
-  }
-
-  Enumerable<Object[]> execute(FqpFragment fragment);
+/** Physical relational expression evaluated by the FQP orchestrator. */
+public interface FqpRel extends RelNode {
+  /** TODO: Add an implement method that serializes an FQP fragment. */
 }

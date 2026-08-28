@@ -27,7 +27,7 @@ public final class FqpDestination {
   private final FqpDestinationCapabilities capabilities;
 
   public FqpDestination(String sourceId, SqlDialect dialect) {
-    this(sourceId, dialect, FqpDestinationCapabilities.sqlOnly());
+    this(sourceId, dialect, FqpDestinationCapabilities.substraitOnly());
   }
 
   public FqpDestination(String sourceId, SqlDialect dialect,
@@ -49,7 +49,7 @@ public final class FqpDestination {
     return capabilities;
   }
 
-  static String requireNonBlank(String value, String name) {
+  public static String requireNonBlank(String value, String name) {
     Objects.requireNonNull(value, name);
     if (value.trim().isEmpty()) {
       throw new IllegalArgumentException(name + " must not be blank");

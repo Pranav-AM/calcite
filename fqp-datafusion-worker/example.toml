@@ -1,8 +1,11 @@
 # Copy and adjust this file for each endpoint-local worker.
 source_id = "df1"
 bind = "127.0.0.1:8081"
+cost_factor = 1.0
 
 [[tables]]
 name = "orders"
 path = "/absolute/path/to/orders.parquet"
 format = "parquet"
+# Set this to true for CSV files containing a header row.
+has_header = false

@@ -33,11 +33,6 @@ public final class FqpFragment {
   private final Set<String> sourceIds;
   private final List<FqpExchangeRequirement> exchanges;
 
-  public FqpFragment(FqpDestination destination, String sql, RelDataType rowType,
-      Set<String> sourceIds, List<FqpExchangeRequirement> exchanges) {
-    this(destination, FqpFragmentPayload.sql(sql), rowType, sourceIds, exchanges);
-  }
-
   public FqpFragment(FqpDestination destination, FqpFragmentPayload payload,
       RelDataType rowType, Set<String> sourceIds, List<FqpExchangeRequirement> exchanges) {
     this.destination = Objects.requireNonNull(destination, "destination");
@@ -53,13 +48,6 @@ public final class FqpFragment {
 
   public FqpDestination destination() {
     return destination;
-  }
-
-  public String sql() {
-    if (payload.format() != FqpFragmentPayload.Format.SQL) {
-      throw new IllegalStateException("fragment payload is " + payload.format() + ", not SQL");
-    }
-    return payload.utf8Text();
   }
 
   public FqpFragmentPayload payload() {

@@ -119,7 +119,7 @@ public final class FqpPlanningConfig {
     return Collections.unmodifiableMap(result);
   }
 
-  static List<String> copyName(List<String> name) {
+  public static List<String> copyName(List<String> name) {
     Objects.requireNonNull(name, "name");
     if (name.isEmpty()) {
       throw new IllegalArgumentException("table name must not be empty");

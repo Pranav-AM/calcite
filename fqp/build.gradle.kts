@@ -14,6 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import org.gradle.api.tasks.testing.Test
+
 dependencies {
     api(project(":core"))
 
@@ -24,8 +26,18 @@ dependencies {
     // Generated Substrait protobuf bindings; the serializer intentionally
     // avoids the Java-11-only Calcite adapter from Substrait Java.
     implementation("io.substrait:core:0.62.0")
-    implementation("org.duckdb:duckdb_jdbc:1.5.4.0")
-
     testImplementation(project(":testkit"))
     testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgs("--add-opens=java.base/java.nio=ALL-UNNAMED")
+}
+
+tasks.register<JavaExec>("runDataFusionDemo") {
+    group = "application"
+    description = "Runs the minimal two-worker FQP DataFusion demo"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("org.apache.calcite.adapter.fqp.demo.FqpDataFusionDemo")
+    jvmArgs("--add-opens=java.base/java.nio=ALL-UNNAMED")
 }

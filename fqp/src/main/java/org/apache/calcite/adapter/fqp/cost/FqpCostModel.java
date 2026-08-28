@@ -14,19 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.fqp;
+package org.apache.calcite.adapter.fqp.cost;
 
-import org.apache.calcite.linq4j.Enumerable;
+import org.apache.calcite.adapter.fqp.RemoteCostEstimate;
 
-import java.util.Collections;
-import java.util.Set;
+import org.apache.calcite.plan.RelOptCost;
+import org.apache.calcite.plan.RelOptPlanner;
 
-/** Executes a selected FQP fragment and returns its rows to Calcite. */
-public interface FqpFragmentExecutor {
-  /** Formats this executor can execute without a coordinator-side conversion. */
-  default Set<FqpFragmentPayload.Format> supportedPayloadFormats() {
-    return Collections.singleton(FqpFragmentPayload.Format.SUBSTRAIT_BINARY);
+/** Maps a remote EXPLAIN estimate into Calcite's rows/CPU/I/O cost dimensions. */
+public final class FqpCostModel {
+  private FqpCostModel() {
   }
 
-  Enumerable<Object[]> execute(FqpFragment fragment);
+  public static RelOptCost toRelOptCost(RelOptPlanner planner,
+      RemoteCostEstimate estimate, double movementCostFactor) {
+    // RelOptCost has no startup dimension. Preserve total remote work as CPU
+    // and model the explicit data-movement term as I/O.
+    return planner.getCostFactory().makeCost(estimate.getRowCount(),
+        Math.max(0D, estimate.getTotalCost()),
+        estimate.movementCost(movementCostFactor));
+  }
 }

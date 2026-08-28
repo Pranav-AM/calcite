@@ -16,6 +16,9 @@
  */
 package org.apache.calcite.adapter.fqp;
 
+import org.apache.calcite.adapter.fqp.rel.FqpRel;
+import org.apache.calcite.adapter.fqp.rules.FqpRules;
+
 import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptPlanner;
 

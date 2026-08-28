@@ -10,7 +10,6 @@
  */
 package org.apache.calcite.adapter.fqp;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -18,9 +17,7 @@ import java.util.Objects;
 public final class FqpFragmentPayload {
   /** Wire formats understood by FQP execution endpoints. */
   public enum Format {
-    SQL,
-    SUBSTRAIT_BINARY,
-    SUBSTRAIT_JSON
+    SUBSTRAIT_BINARY
   }
 
   private final Format format;
@@ -31,15 +28,7 @@ public final class FqpFragmentPayload {
     this.bytes = Arrays.copyOf(Objects.requireNonNull(bytes, "bytes"), bytes.length);
   }
 
-  public static FqpFragmentPayload sql(String sql) {
-    return new FqpFragmentPayload(Format.SQL,
-        FqpDestination.requireNonBlank(sql, "sql").getBytes(StandardCharsets.UTF_8));
-  }
-
   public static FqpFragmentPayload binary(Format format, byte[] bytes) {
-    if (format == Format.SQL) {
-      throw new IllegalArgumentException("use sql(String) for SQL payloads");
-    }
     return new FqpFragmentPayload(format, bytes);
   }
 
@@ -51,10 +40,4 @@ public final class FqpFragmentPayload {
     return Arrays.copyOf(bytes, bytes.length);
   }
 
-  public String utf8Text() {
-    if (format == Format.SUBSTRAIT_BINARY) {
-      throw new IllegalStateException("binary Substrait payload has no UTF-8 text form");
-    }
-    return new String(bytes, StandardCharsets.UTF_8);
-  }
 }

@@ -14,19 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.calcite.adapter.fqp;
+package org.apache.calcite.adapter.fqp.serialization;
 
-import org.apache.calcite.linq4j.Enumerable;
-
-import java.util.Collections;
-import java.util.Set;
-
-/** Executes a selected FQP fragment and returns its rows to Calcite. */
-public interface FqpFragmentExecutor {
-  /** Formats this executor can execute without a coordinator-side conversion. */
-  default Set<FqpFragmentPayload.Format> supportedPayloadFormats() {
-    return Collections.singleton(FqpFragmentPayload.Format.SUBSTRAIT_BINARY);
+/** Indicates that a relational subtree cannot yet be sent as an FQP fragment. */
+public class FqpSerializationException extends RuntimeException {
+  public FqpSerializationException(String message) {
+    super(message);
   }
-
-  Enumerable<Object[]> execute(FqpFragment fragment);
 }

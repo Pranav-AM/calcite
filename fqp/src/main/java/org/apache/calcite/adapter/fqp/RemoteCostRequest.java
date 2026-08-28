@@ -27,11 +27,6 @@ public final class RemoteCostRequest {
   private final Duration timeout;
 
   public RemoteCostRequest(String callerSourceId, String destinationSourceId,
-      String sql, Duration timeout) {
-    this(callerSourceId, destinationSourceId, FqpFragmentPayload.sql(sql), timeout);
-  }
-
-  public RemoteCostRequest(String callerSourceId, String destinationSourceId,
       FqpFragmentPayload payload, Duration timeout) {
     this.callerSourceId =
         FqpDestination.requireNonBlank(callerSourceId, "callerSourceId");
@@ -50,14 +45,6 @@ public final class RemoteCostRequest {
 
   public String destinationSourceId() {
     return destinationSourceId;
-  }
-
-  public String sql() {
-    if (payload.format() != FqpFragmentPayload.Format.SQL) {
-      throw new IllegalStateException("cost request payload is " + payload.format()
-          + ", not SQL");
-    }
-    return payload.utf8Text();
   }
 
   public FqpFragmentPayload payload() {

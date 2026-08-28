@@ -16,20 +16,18 @@ import org.apache.calcite.sql.dialect.DuckDBSqlDialect;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/** Tests for {@link FqpFragmentPayload}. */
 class FqpFragmentPayloadTest {
   @Test void destinationExposesPayloadAndEndpointCapabilities() {
     final FqpDestinationCapabilities capabilities = FqpDestinationCapabilities.of(
-        EnumSet.of(FqpFragmentPayload.Format.SQL,
-            FqpFragmentPayload.Format.SUBSTRAIT_BINARY),
+        EnumSet.of(FqpFragmentPayload.Format.SUBSTRAIT_BINARY),
         URI.create("http://df1:8080/v1/execute"), URI.create("http://df1:8080/v1/cost"),
         URI.create("grpc://df1:32010"));
     final FqpDestination destination = new FqpDestination("df1", DuckDBSqlDialect.DEFAULT,
@@ -41,10 +39,13 @@ class FqpFragmentPayloadTest {
     assertEquals("grpc://df1:32010", destination.capabilities().flightEndpoint().get().toString());
   }
 
-  @Test void fragmentRequiresDestinationPayloadSupport() {
-    final FqpDestination destination = new FqpDestination("sql", DuckDBSqlDialect.DEFAULT);
-    assertThrows(IllegalArgumentException.class, () -> new FqpFragment(destination,
-        FqpFragmentPayload.binary(FqpFragmentPayload.Format.SUBSTRAIT_BINARY, new byte[] {1}),
+  @Test void fragmentRequiresPayload() {
+    final FqpDestinationCapabilities capabilities = FqpDestinationCapabilities.of(
+        EnumSet.of(FqpFragmentPayload.Format.SUBSTRAIT_BINARY), null, null, null);
+    final FqpDestination destination = new FqpDestination("df", DuckDBSqlDialect.DEFAULT,
+        capabilities);
+    assertThrows(NullPointerException.class, () -> new FqpFragment(destination,
+        null,
         new JavaTypeFactoryImpl().builder().build(), Collections.emptySet(),
         Collections.emptyList()));
   }
@@ -55,6 +56,5 @@ class FqpFragmentPayloadTest {
         FqpFragmentPayload.Format.SUBSTRAIT_BINARY, bytes);
     bytes[0] = 3;
     assertEquals(1, payload.bytes()[0]);
-    assertThrows(IllegalStateException.class, payload::utf8Text);
   }
 }

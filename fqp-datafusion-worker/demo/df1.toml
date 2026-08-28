@@ -1,0 +1,15 @@
+source_id = "df1"
+bind = "127.0.0.1:8081"
+cost_factor = 1.0
+
+[[tables]]
+name = "local_rows"
+path = "demo/local_rows.csv"
+format = "csv"
+has_header = true
+
+[[tables]]
+name = "remote_rows"
+path = "demo/remote_rows.csv"
+format = "csv"
+has_header = true

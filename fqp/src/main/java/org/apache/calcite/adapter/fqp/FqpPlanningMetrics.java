@@ -26,15 +26,15 @@ public final class FqpPlanningMetrics {
   private final AtomicLong remoteCalls = new AtomicLong();
   private final AtomicLong remoteNanos = new AtomicLong();
 
-  void recordCostRequest() {
+  public void recordCostRequest() {
     costRequests.incrementAndGet();
   }
 
-  void recordCacheHit() {
+  public void recordCacheHit() {
     cacheHits.incrementAndGet();
   }
 
-  void recordRemoteCall(long elapsedNanos) {
+  public void recordRemoteCall(long elapsedNanos) {
     remoteCalls.incrementAndGet();
     remoteNanos.addAndGet(elapsedNanos);
   }

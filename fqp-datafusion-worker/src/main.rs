@@ -13,8 +13,8 @@ use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use datafusion::arrow::ipc::writer::StreamWriter;
 use datafusion::arrow::datatypes::DataType;
+use datafusion::arrow::ipc::writer::StreamWriter;
 use datafusion::prelude::{CsvReadOptions, ParquetReadOptions, SessionContext};
 use datafusion_substrait::logical_plan::consumer::from_substrait_plan;
 use datafusion_substrait::substrait::proto::Plan;
@@ -26,6 +26,7 @@ use thiserror::Error;
 struct WorkerState {
     source_id: String,
     context: SessionContext,
+    cost_factor: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,6 +35,8 @@ struct Config {
     bind: SocketAddr,
     #[serde(default)]
     tables: Vec<TableConfig>,
+    #[serde(default = "default_cost_factor")]
+    cost_factor: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +44,8 @@ struct TableConfig {
     name: String,
     path: String,
     format: TableFormat,
+    #[serde(default)]
+    has_header: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -86,18 +91,34 @@ impl IntoResponse for WorkerError {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = env::args().nth(1).ok_or("usage: fqp-datafusion-worker <config.toml>")?;
+    let path = env::args()
+        .nth(1)
+        .ok_or("usage: fqp-datafusion-worker <config.toml>")?;
     let config: Config = toml::from_str(&std::fs::read_to_string(path)?)?;
     let context = SessionContext::new();
     for table in config.tables {
         match table.format {
-            TableFormat::Csv => context.register_csv(&table.name, &table.path,
-                CsvReadOptions::new()).await?,
-            TableFormat::Parquet => context.register_parquet(&table.name, &table.path,
-                ParquetReadOptions::default()).await?,
+            TableFormat::Csv => {
+                context
+                    .register_csv(
+                        &table.name,
+                        &table.path,
+                        CsvReadOptions::new().has_header(table.has_header),
+                    )
+                    .await?
+            }
+            TableFormat::Parquet => {
+                context
+                    .register_parquet(&table.name, &table.path, ParquetReadOptions::default())
+                    .await?
+            }
         }
     }
-    let state = Arc::new(WorkerState { source_id: config.source_id, context });
+    let state = Arc::new(WorkerState {
+        source_id: config.source_id,
+        context,
+        cost_factor: config.cost_factor,
+    });
     let app = Router::new()
         .route("/health", get(health))
         .route("/v1/execute", post(execute))
@@ -109,11 +130,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn health(State(state): State<Arc<WorkerState>>) -> Json<Health> {
-    Json(Health { source_id: state.source_id.clone(), status: "ok" })
+    Json(Health {
+        source_id: state.source_id.clone(),
+        status: "ok",
+    })
 }
 
-async fn execute(State(state): State<Arc<WorkerState>>, body: Bytes)
-    -> Result<Response, WorkerError> {
+async fn execute(
+    State(state): State<Arc<WorkerState>>,
+    body: Bytes,
+) -> Result<Response, WorkerError> {
+    println!(
+        "{}: executing {} Substrait bytes",
+        state.source_id,
+        body.len()
+    );
     let dataframe = data_frame(&state.context, body).await?;
     let batches = dataframe.collect().await?;
     let schema = batches.first().ok_or(WorkerError::EmptyResult)?.schema();
@@ -126,26 +157,46 @@ async fn execute(State(state): State<Arc<WorkerState>>, body: Bytes)
         writer.finish()?;
     }
     let mut response = bytes.into_response();
-    response.headers_mut().insert(header::CONTENT_TYPE,
-        HeaderValue::from_static("application/vnd.apache.arrow.stream"));
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/vnd.apache.arrow.stream"),
+    );
     Ok(response)
 }
 
-async fn cost(State(state): State<Arc<WorkerState>>, body: Bytes)
-    -> Result<Json<Estimate>, WorkerError> {
+async fn cost(
+    State(state): State<Arc<WorkerState>>,
+    body: Bytes,
+) -> Result<Json<Estimate>, WorkerError> {
+    println!(
+        "{}: costing {} Substrait bytes",
+        state.source_id,
+        body.len()
+    );
     let dataframe = data_frame(&state.context, body).await?;
-    let width: i32 = dataframe.schema().fields().iter().map(|field| width_of(field.data_type()))
+    let width: i32 = dataframe
+        .schema()
+        .fields()
+        .iter()
+        .map(|field| width_of(field.data_type()))
         .sum();
     let fields = dataframe.schema().fields().len() as f64;
     // DataFusion does not guarantee cardinality statistics for every provider.
     // Keep these values normalized and conservative until provider statistics
     // and cross-engine calibration are introduced.
-    Ok(Json(Estimate { startup_cost: 1.0, total_cost: 1.0 + fields,
-        row_count: 1000.0, row_width: width.max(1) }))
+    let base_cost = 1.0 + fields;
+    Ok(Json(Estimate {
+        startup_cost: state.cost_factor,
+        total_cost: base_cost * state.cost_factor,
+        row_count: 1000.0,
+        row_width: width.max(1),
+    }))
 }
 
-async fn data_frame(context: &SessionContext, body: Bytes)
-    -> Result<datafusion::dataframe::DataFrame, WorkerError> {
+async fn data_frame(
+    context: &SessionContext,
+    body: Bytes,
+) -> Result<datafusion::dataframe::DataFrame, WorkerError> {
     if body.is_empty() {
         return Err(WorkerError::EmptyBody);
     }
@@ -162,6 +213,10 @@ fn width_of(data_type: &DataType) -> i32 {
         DataType::Int64 | DataType::UInt64 | DataType::Float64 | DataType::Date64 => 8,
         _ => 32,
     }
+}
+
+fn default_cost_factor() -> f64 {
+    1.0
 }
 
 #[cfg(test)]

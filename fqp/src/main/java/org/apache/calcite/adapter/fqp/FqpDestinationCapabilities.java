@@ -35,8 +35,8 @@ public final class FqpDestinationCapabilities {
     this.flightEndpoint = flightEndpoint;
   }
 
-  public static FqpDestinationCapabilities sqlOnly() {
-    return of(EnumSet.of(FqpFragmentPayload.Format.SQL), null, null, null);
+  public static FqpDestinationCapabilities substraitOnly() {
+    return of(EnumSet.of(FqpFragmentPayload.Format.SUBSTRAIT_BINARY), null, null, null);
   }
 
   public static FqpDestinationCapabilities of(Set<FqpFragmentPayload.Format> payloadFormats,
@@ -53,7 +53,15 @@ public final class FqpDestinationCapabilities {
     return payloadFormats;
   }
 
-  public Optional<URI> executionEndpoint() { return Optional.ofNullable(executionEndpoint); }
-  public Optional<URI> costEndpoint() { return Optional.ofNullable(costEndpoint); }
-  public Optional<URI> flightEndpoint() { return Optional.ofNullable(flightEndpoint); }
+  public Optional<URI> executionEndpoint() {
+    return Optional.ofNullable(executionEndpoint);
+  }
+
+  public Optional<URI> costEndpoint() {
+    return Optional.ofNullable(costEndpoint);
+  }
+
+  public Optional<URI> flightEndpoint() {
+    return Optional.ofNullable(flightEndpoint);
+  }
 }

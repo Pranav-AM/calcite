@@ -16,6 +16,8 @@
  */
 package org.apache.calcite.adapter.fqp;
 
+import org.apache.calcite.adapter.fqp.cost.CachingRemoteCostClient;
+
 import java.util.Objects;
 
 /** Per-optimization-request FQP state.

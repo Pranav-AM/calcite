@@ -14,19 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/** Federated query planning contracts and value objects. */
 package org.apache.calcite.adapter.fqp;
-
-import org.apache.calcite.linq4j.Enumerable;
-
-import java.util.Collections;
-import java.util.Set;
-
-/** Executes a selected FQP fragment and returns its rows to Calcite. */
-public interface FqpFragmentExecutor {
-  /** Formats this executor can execute without a coordinator-side conversion. */
-  default Set<FqpFragmentPayload.Format> supportedPayloadFormats() {
-    return Collections.singleton(FqpFragmentPayload.Format.SUBSTRAIT_BINARY);
-  }
-
-  Enumerable<Object[]> execute(FqpFragment fragment);
-}
