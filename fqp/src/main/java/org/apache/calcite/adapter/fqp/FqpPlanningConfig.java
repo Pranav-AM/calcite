@@ -78,6 +78,10 @@ public final class FqpPlanningConfig {
     return Optional.ofNullable(destinations.get(sourceId));
   }
 
+  public Collection<FqpDestination> destinations() {
+    return destinations.values();
+  }
+
   public Optional<FqpTablePlacement> placement(List<String> logicalName) {
     return Optional.ofNullable(placements.get(copyName(logicalName)));
   }

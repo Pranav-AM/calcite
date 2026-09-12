@@ -1,0 +1,8 @@
+source_id = "df-customer"
+bind = "127.0.0.1:8081"
+flight_bind = "127.0.0.1:32010"
+
+[[tables]]
+name = "customer"
+path = "tpch/data/customer.parquet"
+format = "parquet"

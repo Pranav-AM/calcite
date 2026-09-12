@@ -55,10 +55,11 @@ public final class DataFusionFragmentExecutor implements FqpFragmentExecutor {
     final URI endpoint = destination.capabilities().executionEndpoint()
         .orElseThrow(() -> new FqpExecutionException("no DataFusion execution endpoint for "
             + destination.sourceId()));
-    return Linq4j.asEnumerable(ArrowRows.read(execute(endpoint, fragment.payload().bytes())));
+    return Linq4j.asEnumerable(ArrowRows.read(executeArrow(endpoint,
+        fragment.payload().bytes())));
   }
 
-  private static byte[] execute(URI endpoint, byte[] payload) {
+  static byte[] executeArrow(URI endpoint, byte[] payload) {
     HttpURLConnection connection = null;
     try {
       connection = (HttpURLConnection) endpoint.toURL().openConnection();

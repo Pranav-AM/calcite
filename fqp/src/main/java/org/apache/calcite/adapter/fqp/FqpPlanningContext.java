@@ -16,51 +16,43 @@
  */
 package org.apache.calcite.adapter.fqp;
 
-import org.apache.calcite.adapter.fqp.cost.CachingRemoteCostClient;
+import org.apache.calcite.adapter.fqp.cost.DataFusionCostModel;
 
 import java.util.Objects;
 
 /** Per-optimization-request FQP state.
  *
- * <p>The remote-estimate cache is deliberately added in the remote-costing
- * milestone, so this class can already be passed through planner setup without
- * introducing any network behavior.</p>
+ * <p>All costing exposed by this context is local and uses a statistics
+ * snapshot loaded before optimization.</p>
  */
 public final class FqpPlanningContext {
   private final FqpPlanningConfig config;
-  private final RemoteCostClient remoteCostClient;
   private final FqpPlanningMetrics metrics;
   private final FqpFragmentExecutor fragmentExecutor;
+  private final DataFusionCostModel dataFusionCostModel;
 
   public FqpPlanningContext(FqpPlanningConfig config) {
-    this(config, request -> RemoteCostResult.failure("no remote cost client configured"),
-        fragment -> {
-          throw new FqpExecutionException("no FQP fragment executor configured");
-        });
+    this(config, DataFusionCostModel.empty(config));
   }
 
-  public FqpPlanningContext(FqpPlanningConfig config, RemoteCostClient remoteCostClient) {
-    this(config, remoteCostClient, fragment -> {
+  public FqpPlanningContext(FqpPlanningConfig config,
+      DataFusionCostModel dataFusionCostModel) {
+    this(config, dataFusionCostModel, fragment -> {
       throw new FqpExecutionException("no FQP fragment executor configured");
     });
   }
 
-  public FqpPlanningContext(FqpPlanningConfig config, RemoteCostClient remoteCostClient,
-      FqpFragmentExecutor fragmentExecutor) {
+  public FqpPlanningContext(FqpPlanningConfig config,
+      DataFusionCostModel dataFusionCostModel, FqpFragmentExecutor fragmentExecutor) {
     this.config = Objects.requireNonNull(config, "config");
     this.metrics = new FqpPlanningMetrics();
-    this.remoteCostClient = new CachingRemoteCostClient(
-        Objects.requireNonNull(remoteCostClient, "remoteCostClient"), metrics);
     this.fragmentExecutor = Objects.requireNonNull(fragmentExecutor, "fragmentExecutor");
+    this.dataFusionCostModel = Objects.requireNonNull(dataFusionCostModel,
+        "dataFusionCostModel");
   }
 
   public FqpPlanningConfig config() {
     return config;
-  }
-
-  /** Returns a cache scoped to this planning context. */
-  public RemoteCostClient remoteCostClient() {
-    return remoteCostClient;
   }
 
   public FqpFragmentExecutor fragmentExecutor() {
@@ -69,5 +61,10 @@ public final class FqpPlanningContext {
 
   public FqpPlanningMetrics metrics() {
     return metrics;
+  }
+
+  /** Local, network-free DataFusion estimator for this planning context. */
+  public DataFusionCostModel dataFusionCostModel() {
+    return dataFusionCostModel;
   }
 }

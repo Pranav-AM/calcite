@@ -18,7 +18,7 @@ package org.apache.calcite.adapter.fqp.rel;
 
 import org.apache.calcite.adapter.fqp.cost.FqpCostModel;
 import org.apache.calcite.adapter.fqp.FqpFragment;
-import org.apache.calcite.adapter.fqp.RemoteCostEstimate;
+import org.apache.calcite.adapter.fqp.cost.DataFusionCostEstimate;
 
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
@@ -43,25 +43,22 @@ import java.util.Objects;
  */
 public final class FqpRemoteFragmentRel extends AbstractRelNode implements FqpRel {
   private final FqpFragment fragment;
-  private final RemoteCostEstimate estimate;
-  private final double movementCostFactor;
+  private final DataFusionCostEstimate estimate;
   private final RelDataType rowType;
 
   public FqpRemoteFragmentRel(RelOptCluster cluster, RelTraitSet traitSet,
-      RelDataType rowType, FqpFragment fragment, RemoteCostEstimate estimate,
-      double movementCostFactor) {
+      RelDataType rowType, FqpFragment fragment, DataFusionCostEstimate estimate) {
     super(cluster, traitSet);
     this.rowType = Objects.requireNonNull(rowType, "rowType");
     this.fragment = Objects.requireNonNull(fragment, "fragment");
     this.estimate = Objects.requireNonNull(estimate, "estimate");
-    this.movementCostFactor = movementCostFactor;
   }
 
   public FqpFragment fragment() {
     return fragment;
   }
 
-  public RemoteCostEstimate estimate() {
+  public DataFusionCostEstimate estimate() {
     return estimate;
   }
 
@@ -73,21 +70,23 @@ public final class FqpRemoteFragmentRel extends AbstractRelNode implements FqpRe
     return super.explainTerms(pw)
         .item("destination", fragment.destination().sourceId())
         .item("payloadFormat", fragment.payload().format())
-        .item("remoteTotalCost", estimate.getTotalCost())
-        .item("remoteStartupCost", estimate.getStartupCost())
+        .item("estimatedRows", estimate.rowCount())
+        .item("cpuCost", estimate.cpu())
+        .item("ioCost", estimate.io())
+        .item("networkCost", estimate.network())
+        .item("totalCost", estimate.totalCost())
         .item("exchanges", fragment.exchanges());
   }
 
   @Override public @Nullable RelOptCost computeSelfCost(RelOptPlanner planner,
       RelMetadataQuery mq) {
-    return FqpCostModel.toRelOptCost(planner, estimate, movementCostFactor);
+    return FqpCostModel.toRelOptCost(planner, estimate);
   }
 
   @Override public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
     if (!inputs.isEmpty()) {
       throw new IllegalArgumentException("FQP fragments do not have relational inputs");
     }
-    return new FqpRemoteFragmentRel(getCluster(), traitSet, rowType, fragment,
-        estimate, movementCostFactor);
+    return new FqpRemoteFragmentRel(getCluster(), traitSet, rowType, fragment, estimate);
   }
 }

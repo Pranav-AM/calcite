@@ -30,9 +30,14 @@ import org.apache.calcite.linq4j.tree.Expression;
 import org.apache.calcite.linq4j.tree.Expressions;
 import org.apache.calcite.plan.ConventionTraitDef;
 import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelOptCost;
+import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.convert.ConverterImpl;
+import org.apache.calcite.rel.metadata.RelMetadataQuery;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
 
@@ -48,6 +53,12 @@ public final class FqpToEnumerableConverter extends ConverterImpl implements Enu
 
   @Override public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
     return new FqpToEnumerableConverter(getCluster(), traitSet, sole(inputs), executor);
+  }
+
+  @Override public @Nullable RelOptCost computeSelfCost(RelOptPlanner planner,
+      RelMetadataQuery mq) {
+    final RelOptCost cost = super.computeSelfCost(planner, mq);
+    return cost == null ? null : cost.multiplyBy(0.1D);
   }
 
   @Override public Result implement(EnumerableRelImplementor implementor, Prefer pref) {

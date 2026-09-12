@@ -18,9 +18,8 @@ package org.apache.calcite.adapter.fqp.rules;
 
 import org.apache.calcite.adapter.fqp.FqpConvention;
 import org.apache.calcite.adapter.fqp.FqpFragment;
+import org.apache.calcite.adapter.fqp.cost.DataFusionCostEstimate;
 import org.apache.calcite.adapter.fqp.rel.FqpRemoteFragmentRel;
-import org.apache.calcite.adapter.fqp.RemoteCostRequest;
-import org.apache.calcite.adapter.fqp.RemoteCostResult;
 import org.apache.calcite.adapter.fqp.serialization.FqpFragmentSerializer;
 import org.apache.calcite.adapter.fqp.serialization.FqpSerializationException;
 
@@ -61,16 +60,15 @@ public final class FqpScanRule extends ConverterRule {
     if (!fragment.sourceIds().contains(convention.destination().sourceId())) {
       return null;
     }
-    final RemoteCostResult result = convention.planningContext().remoteCostClient()
-        .explain(new RemoteCostRequest(convention.planningContext().config()
-            .coordinatorSourceId(), convention.destination().sourceId(), fragment.payload(),
-            convention.planningContext().config().remoteCostTimeout()));
-    if (!result.isSuccess()) {
+    final DataFusionCostEstimate estimate;
+    try {
+      estimate = convention.planningContext().dataFusionCostModel()
+          .estimate(scan, convention.destination().sourceId());
+    } catch (IllegalArgumentException e) {
       return null;
     }
     final RelTraitSet traitSet = scan.getTraitSet().replace(convention);
     return new FqpRemoteFragmentRel(scan.getCluster(), traitSet, scan.getRowType(),
-        fragment, result.estimate().get(),
-        convention.planningContext().config().movementCostFactor());
+        fragment, estimate);
   }
 }

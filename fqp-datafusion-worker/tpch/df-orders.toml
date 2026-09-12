@@ -1,0 +1,8 @@
+source_id = "df-orders"
+bind = "127.0.0.1:8082"
+flight_bind = "127.0.0.1:32011"
+
+[[tables]]
+name = "orders"
+path = "tpch/data/orders.parquet"
+format = "parquet"

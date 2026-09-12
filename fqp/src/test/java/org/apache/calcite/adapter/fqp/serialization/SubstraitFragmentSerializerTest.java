@@ -16,6 +16,8 @@ import org.apache.calcite.adapter.fqp.FqpFragment;
 import org.apache.calcite.adapter.fqp.FqpFragmentPayload;
 import org.apache.calcite.adapter.fqp.FqpPlanningConfig;
 import org.apache.calcite.adapter.fqp.FqpTablePlacement;
+import org.apache.calcite.adapter.fqp.cost.TpchQ3Fixture;
+import org.apache.calcite.adapter.fqp.cost.TpchQueryFixture;
 
 import io.substrait.proto.Plan;
 
@@ -40,7 +42,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Tests for {@link SubstraitFragmentSerializer}. */
@@ -92,12 +93,40 @@ class SubstraitFragmentSerializerTest {
         .getExpression().getScalarFunction().getArgumentsCount());
   }
 
-  @Test void rejectsExpressionFilter() {
+  @Test void serializesEqualityFilter() throws Exception {
     final RelBuilder builder = builder();
-    assertThrows(SubstraitSerializationException.class, () ->
-        new SubstraitFragmentSerializer(config()).serialize(
-            builder.scan("EMP").filter(builder.equals(builder.field("EMPNO"), builder.literal(1)))
-                .build(), "df1"));
+    final Plan plan = Plan.parseFrom(new SubstraitFragmentSerializer(config()).serialize(
+        builder.scan("EMP").filter(builder.equals(builder.field("EMPNO"), builder.literal(1)))
+            .build(), "df1").payload().bytes());
+    assertTrue(plan.getRelations(0).getRoot().getInput().hasFilter());
+  }
+
+  @Test void serializesCalciteQ3OperatorTree() throws Exception {
+    final FqpFragment fragment = new SubstraitFragmentSerializer(q3Config())
+        .serialize(TpchQ3Fixture.logicalPlan(), "df1");
+    final Plan plan = Plan.parseFrom(fragment.payload().bytes());
+
+    assertTrue(plan.getRelations(0).getRoot().getInput().hasFetch());
+    assertTrue(plan.getRelations(0).getRoot().getInput().getFetch().getInput().hasSort());
+    assertTrue(plan.getRelations(0).getRoot().getInput().getFetch().getInput().getSort()
+        .getInput().hasProject());
+    assertEquals(9, plan.getExtensionsCount());
+    assertTrue(plan.getExtensionsList().stream().anyMatch(extension ->
+        extension.getExtensionFunction().getName().startsWith("sum:")));
+  }
+
+  @Test void serializesQ5AndQ7OperatorTrees() throws Exception {
+    for (int query : new int[] {5, 7}) {
+      final Plan plan = Plan.parseFrom(new SubstraitFragmentSerializer(q3Config())
+          .serialize(TpchQueryFixture.logicalPlan(query, 0.01D), "df1").payload().bytes());
+      assertTrue(plan.getRelations(0).getRoot().getInput().hasSort());
+      if (query == 7) {
+        final String encoded = plan.getRelations(0).toString();
+        assertTrue(encoded.contains("function_reference: 8"), "Q7 must encode OR");
+        assertTrue(encoded.contains("function_reference: 9"), "Q7 must encode year extraction");
+        assertTrue(encoded.contains("string: \"year\""));
+      }
+    }
   }
 
   private static RelBuilder builder() {
@@ -117,6 +146,24 @@ class SubstraitFragmentSerializerTest {
         new FqpDestination("df1", DuckDBSqlDialect.DEFAULT, capabilities)),
         Collections.singletonList(new FqpTablePlacement(Collections.singletonList("EMP"), "pg1",
             visibleNames)), 0.01D, false);
+  }
+
+  private static FqpPlanningConfig q3Config() {
+    final FqpDestinationCapabilities capabilities = FqpDestinationCapabilities.of(
+        EnumSet.of(FqpFragmentPayload.Format.SUBSTRAIT_BINARY), null, null, null);
+    final FqpDestination destination = new FqpDestination("df1", DuckDBSqlDialect.DEFAULT,
+        capabilities);
+    return FqpPlanningConfig.of("calcite", Collections.singletonList(destination),
+        Arrays.asList(q3Placement("CUSTOMER"), q3Placement("ORDERS"),
+            q3Placement("LINEITEM"), q3Placement("SUPPLIER"),
+            q3Placement("NATION"), q3Placement("REGION")), 0.01D, true);
+  }
+
+  private static FqpTablePlacement q3Placement(String table) {
+    final java.util.List<String> logicalName = Arrays.asList("TPCH", table);
+    return new FqpTablePlacement(logicalName, "df1",
+        Collections.singletonMap("df1",
+            Collections.singletonList(table.toLowerCase(java.util.Locale.ROOT))));
   }
 
   /** Table with the row type used by serializer tests. */

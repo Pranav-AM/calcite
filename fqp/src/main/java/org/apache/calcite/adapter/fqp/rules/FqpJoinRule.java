@@ -19,10 +19,8 @@ package org.apache.calcite.adapter.fqp.rules;
 import org.apache.calcite.adapter.fqp.FqpConvention;
 import org.apache.calcite.adapter.fqp.FqpExchangeRequirement;
 import org.apache.calcite.adapter.fqp.FqpFragment;
+import org.apache.calcite.adapter.fqp.cost.DataFusionCostEstimate;
 import org.apache.calcite.adapter.fqp.rel.FqpRemoteFragmentRel;
-import org.apache.calcite.adapter.fqp.RemoteCostEstimate;
-import org.apache.calcite.adapter.fqp.RemoteCostRequest;
-import org.apache.calcite.adapter.fqp.RemoteCostResult;
 import org.apache.calcite.adapter.fqp.serialization.FqpFragmentSerializer;
 import org.apache.calcite.adapter.fqp.serialization.FqpSerializationException;
 
@@ -69,22 +67,21 @@ public final class FqpJoinRule extends ConverterRule {
             convention.planningContext().config().coordinatorSourceId())) {
       return null;
     }
-    final RemoteCostResult result = convention.planningContext().remoteCostClient()
-        .explain(new RemoteCostRequest(convention.planningContext().config()
-            .coordinatorSourceId(), convention.destination().sourceId(), fragment.payload(),
-            convention.planningContext().config().remoteCostTimeout()));
-    if (!result.isSuccess()) {
+    final DataFusionCostEstimate estimate;
+    try {
+      estimate = convention.planningContext().dataFusionCostModel()
+          .estimate(join, convention.destination().sourceId());
+    } catch (IllegalArgumentException e) {
       return null;
     }
-    final RemoteCostEstimate estimate = result.estimate().get();
     final FqpExchangeRequirement resultExchange = new FqpExchangeRequirement(
         convention.destination().sourceId(), convention.planningContext().config()
             .coordinatorSourceId(),
-        Math.max(0D, estimate.getRowCount()) * Math.max(0, estimate.getRowWidth()));
+        estimate.rowCount() * estimate.rowWidth());
     fragment = new FqpFragment(fragment.destination(), fragment.payload(), fragment.rowType(),
         fragment.sourceIds(), Collections.singletonList(resultExchange));
     final RelTraitSet traitSet = join.getTraitSet().replace(convention);
     return new FqpRemoteFragmentRel(join.getCluster(), traitSet, join.getRowType(), fragment,
-        estimate, convention.planningContext().config().movementCostFactor());
+        estimate);
   }
 }

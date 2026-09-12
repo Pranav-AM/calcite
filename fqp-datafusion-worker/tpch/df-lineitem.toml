@@ -1,0 +1,8 @@
+source_id = "df-lineitem"
+bind = "127.0.0.1:8083"
+flight_bind = "127.0.0.1:32012"
+
+[[tables]]
+name = "lineitem"
+path = "tpch/data/lineitem.parquet"
+format = "parquet"

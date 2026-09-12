@@ -22,6 +22,8 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+mod flight;
+
 #[derive(Clone)]
 struct WorkerState {
     source_id: String,
@@ -33,6 +35,7 @@ struct WorkerState {
 struct Config {
     source_id: String,
     bind: SocketAddr,
+    flight_bind: Option<SocketAddr>,
     #[serde(default)]
     tables: Vec<TableConfig>,
     #[serde(default = "default_cost_factor")]
@@ -79,8 +82,6 @@ enum WorkerError {
     Arrow(#[from] datafusion::arrow::error::ArrowError),
     #[error("the request body is empty")]
     EmptyBody,
-    #[error("the fragment returned no record batches")]
-    EmptyResult,
 }
 
 impl IntoResponse for WorkerError {
@@ -114,6 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    let flight_context = context.clone();
     let state = Arc::new(WorkerState {
         source_id: config.source_id,
         context,
@@ -125,7 +127,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/v1/cost", post(cost))
         .with_state(state);
     let listener = tokio::net::TcpListener::bind(config.bind).await?;
-    axum::serve(listener, app).await?;
+    if let Some(flight_bind) = config.flight_bind {
+        let flight_listener = tokio::net::TcpListener::bind(flight_bind).await?;
+        println!(
+            "FQP_READY {}",
+            serde_json::json!({
+                "http": listener.local_addr()?.to_string(),
+                "flight": flight_listener.local_addr()?.to_string()
+            })
+        );
+        tokio::select! {
+            result = axum::serve(listener, app) => result?,
+            result = flight::serve(flight_listener, flight_context) => result?,
+        }
+    } else {
+        println!(
+            "FQP_READY {}",
+            serde_json::json!({
+                "http": listener.local_addr()?.to_string()
+            })
+        );
+        axum::serve(listener, app).await?;
+    }
     Ok(())
 }
 
@@ -146,8 +169,8 @@ async fn execute(
         body.len()
     );
     let dataframe = data_frame(&state.context, body).await?;
+    let schema = Arc::new(dataframe.schema().as_arrow().clone());
     let batches = dataframe.collect().await?;
-    let schema = batches.first().ok_or(WorkerError::EmptyResult)?.schema();
     let mut bytes = Vec::new();
     {
         let mut writer = StreamWriter::try_new(&mut bytes, &schema)?;

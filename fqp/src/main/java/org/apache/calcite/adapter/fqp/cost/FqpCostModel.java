@@ -34,4 +34,11 @@ public final class FqpCostModel {
         Math.max(0D, estimate.getTotalCost()),
         estimate.movementCost(movementCostFactor));
   }
+
+  /** Converts a locally computed DataFusion estimate into Calcite dimensions. */
+  public static RelOptCost toRelOptCost(RelOptPlanner planner,
+      DataFusionCostEstimate estimate) {
+    return planner.getCostFactory().makeCost(estimate.rowCount(), estimate.cpu(),
+        estimate.io() + estimate.network());
+  }
 }

@@ -1,13 +1,13 @@
-# FQP Demo Build, Run, and Test Guide
+# FQP Build, Run, and Test Guide
 
-Commands below assume the Calcite repository root as the starting directory. On Windows PowerShell use `gradlew.bat`; on macOS/Linux use `./gradlew`.
+Commands below assume the Calcite repository root as the starting directory. On Windows PowerShell use `.\gradlew.bat`; on macOS/Linux use `./gradlew`.
 
 ## Prerequisites
 
 - A JDK supported by this Calcite checkout, with `JAVA_HOME` configured if required.
 - Rust and Cargo capable of building the locked `fqp-datafusion-worker` dependency set.
 - `curl` for the optional health checks.
-- Ports `8081` and `8082` available on localhost.
+- Ports `8081` and `8082` available on localhost for the legacy demo. Integration tests use OS-assigned ports.
 
 The first Gradle and Cargo builds may download dependencies.
 
@@ -33,6 +33,42 @@ macOS/Linux equivalents:
 ```
 
 The module configures the required `--add-opens=java.base/java.nio=ALL-UNNAMED` JVM argument for Arrow tests and the demo task.
+
+### Live integration tests
+
+Ordinary `:fqp:test` and `:fqp:build` do not run the Flight or TPC-H integration
+suites. Run them explicitly from the repository root:
+
+```powershell
+.\gradlew.bat :fqp:flightIntegrationTest :fqp:tpchIntegrationTest
+```
+
+macOS/Linux:
+
+```bash
+./gradlew :fqp:flightIntegrationTest :fqp:tpchIntegrationTest
+```
+
+The Flight suite builds and launches a Rust worker and checks Java Arrow uploads
+followed by Substrait scans. The TPC-H suite also builds the Arrow-to-Parquet
+converter, generates scale-factor 0.01 data from Calcite, and compares Q3/Q5/Q7 across
+three workers with local Calcite results. The FQP Q3 fixture uses `BUILDING`,
+`o_orderdate < DATE '1995-03-15'`, and `l_shipdate > DATE '1995-03-15'` to match
+the external plan. This differs from the original query in `plus`; only the
+FQP fixture is changed. The result report includes the exact SQL used.
+Both suites manage their own worker
+processes; no manual startup is required.
+
+Use `-PfqpWorkerBinary=<absolute path>` to supply a prebuilt worker. The TPC-H
+suite still builds its converter with Cargo. Use `-PfqpTpchScale=0.02` to change
+the TPC-H scale. Artifacts remain in `fqp/build/live-tpch-q3`, `live-tpch-q5`, and
+`live-tpch-q7`, including the exact SQL for each query. Q5/Q7 use Calcite's
+checked-in variants with their date predicates omitted.
+See the [TPC-H guide](../fqp-datafusion-worker/tpch/README.md) for the query
+variant, comparison tolerance, and retained artifacts.
+
+The remaining steps describe building the worker manually and running the
+legacy two-worker CSV demo.
 
 ## 2. Build and test the DataFusion worker
 
@@ -112,4 +148,3 @@ Press `Ctrl+C` in each worker terminal. The demo does not create persistent data
 - **Arrow reflective-access error:** invoke the Gradle tasks above; `fqp/build.gradle.kts` supplies the required JVM `--add-opens` option.
 - **Cargo dependency drift or incompatible toolchain:** retain `--locked` and update/install Rust rather than regenerating `Cargo.lock` as part of a normal demo run.
 - **Unsupported Substrait operator/type:** the current serializer intentionally supports only the subset documented in `ARCHITECTURE.md`.
-

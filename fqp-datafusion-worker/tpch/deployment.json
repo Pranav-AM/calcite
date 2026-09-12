@@ -1,0 +1,143 @@
+{
+  "coordinatorSourceId": "calcite",
+  "movementCostFactor": 0.01,
+  "allowRemoteRoot": true,
+  "remoteCostTimeoutMillis": 30000,
+  "destinations": [
+    {
+      "sourceId": "df-customer",
+      "dialect": "DUCKDB",
+      "payloadFormats": [
+        "SUBSTRAIT_BINARY"
+      ],
+      "executionEndpoint": "http://127.0.0.1:8081/v1/execute",
+      "flightEndpoint": "grpc://127.0.0.1:32010"
+    },
+    {
+      "sourceId": "df-orders",
+      "dialect": "DUCKDB",
+      "payloadFormats": [
+        "SUBSTRAIT_BINARY"
+      ],
+      "executionEndpoint": "http://127.0.0.1:8082/v1/execute",
+      "flightEndpoint": "grpc://127.0.0.1:32011"
+    },
+    {
+      "sourceId": "df-lineitem",
+      "dialect": "DUCKDB",
+      "payloadFormats": [
+        "SUBSTRAIT_BINARY"
+      ],
+      "executionEndpoint": "http://127.0.0.1:8083/v1/execute",
+      "flightEndpoint": "grpc://127.0.0.1:32012"
+    }
+  ],
+  "placements": [
+    {
+      "logicalName": [
+        "TPCH",
+        "CUSTOMER"
+      ],
+      "sourceId": "df-customer",
+      "visibleNames": {
+        "df-customer": [
+          "customer"
+        ]
+      }
+    },
+    {
+      "logicalName": [
+        "TPCH",
+        "ORDERS"
+      ],
+      "sourceId": "df-orders",
+      "visibleNames": {
+        "df-orders": [
+          "orders"
+        ]
+      }
+    },
+    {
+      "logicalName": [
+        "TPCH",
+        "LINEITEM"
+      ],
+      "sourceId": "df-lineitem",
+      "visibleNames": {
+        "df-lineitem": [
+          "lineitem"
+        ]
+      }
+    }
+  ],
+  "statistics": {
+    "df-customer": {
+      "version": "example-sf-0.01",
+      "loadedAt": "1970-01-01T00:00:00Z",
+      "tables": [
+        {
+          "logicalName": [
+            "TPCH",
+            "CUSTOMER"
+          ],
+          "rowCount": 1500,
+          "averageRowWidth": 180
+        }
+      ]
+    },
+    "df-orders": {
+      "version": "example-sf-0.01",
+      "loadedAt": "1970-01-01T00:00:00Z",
+      "tables": [
+        {
+          "logicalName": [
+            "TPCH",
+            "ORDERS"
+          ],
+          "rowCount": 15000,
+          "averageRowWidth": 120
+        }
+      ]
+    },
+    "df-lineitem": {
+      "version": "example-sf-0.01",
+      "loadedAt": "1970-01-01T00:00:00Z",
+      "tables": [
+        {
+          "logicalName": [
+            "TPCH",
+            "LINEITEM"
+          ],
+          "rowCount": 60000,
+          "averageRowWidth": 140
+        }
+      ]
+    }
+  },
+  "costParameters": {
+    "df-customer": {
+      "scanCpuPerRow": 0.01,
+      "expressionCpuPerRow": 0.02,
+      "joinCpuPerRow": 0.05,
+      "aggregateCpuPerRow": 0.03,
+      "sortCpuPerComparison": 0.01,
+      "ioPerByte": 0.0001
+    },
+    "df-orders": {
+      "scanCpuPerRow": 0.01,
+      "expressionCpuPerRow": 0.02,
+      "joinCpuPerRow": 0.05,
+      "aggregateCpuPerRow": 0.03,
+      "sortCpuPerComparison": 0.01,
+      "ioPerByte": 0.0001
+    },
+    "df-lineitem": {
+      "scanCpuPerRow": 0.01,
+      "expressionCpuPerRow": 0.02,
+      "joinCpuPerRow": 0.05,
+      "aggregateCpuPerRow": 0.03,
+      "sortCpuPerComparison": 0.01,
+      "ioPerByte": 0.0001
+    }
+  }
+}
